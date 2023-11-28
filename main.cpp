@@ -1,9 +1,10 @@
 #include <SFML/Graphics.hpp>
 #include <cstdlib>
 #include <iostream>
+#include "global.hpp"
 
 void movePaddle(sf::RectangleShape& paddle1, sf::RectangleShape& paddle2, float deltaTime){
-    const float paddleSpeed = 250.0f;
+    const float paddleSpeed = 400.0f;
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)){
         float nextPosition = paddle1.getPosition().y;
@@ -32,6 +33,7 @@ void movePaddle(sf::RectangleShape& paddle1, sf::RectangleShape& paddle2, float 
     }
 }
 
+//totally made my code more readable by making this one function separate
 bool isCollision(sf::RectangleShape& ball, sf::RectangleShape& paddle) {
     sf::FloatRect ballBox = ball.getGlobalBounds();
     sf::FloatRect paddleBox = paddle.getGlobalBounds();
@@ -41,31 +43,55 @@ bool isCollision(sf::RectangleShape& ball, sf::RectangleShape& paddle) {
     return false;
 }
 
-sf::Vector2f moveBall(sf::RectangleShape& ball, float deltaTime, sf::Vector2f direction, sf::RectangleShape& paddle1, sf::RectangleShape& paddle2){
-    float speed = 700.0f;
+sf::Vector2f moveBall(sf::RectangleShape& ball, float deltaTime, sf::Vector2f direction, 
+                        sf::RectangleShape& paddle1, sf::RectangleShape& paddle2, int* score1, int* score2){
+    float speed = 800.0f;
     
     //handling collision with the paddle by negating the x component of the vector (180 degree turn) and giving y direction a random value
     if (isCollision(ball, paddle1) || isCollision(ball, paddle2)){
         direction.x = -direction.x;
         direction.y = -0.9 + static_cast<float>(std::rand()) / RAND_MAX * (0.9 + 0.9);
+
+        //set the ball location to (1+end of the paddle, current y position)
+        if (isCollision(ball, paddle1)){
+            ball.setPosition(21, ball.getPosition().y);
+        }
+        if (isCollision(ball, paddle2)){
+            ball.setPosition(1159, ball.getPosition().y);
+        }
     }
 
     //handling collision with the top and bottom of the screen
-    if (ball.getPosition().y < 5 || ball.getPosition().y > 580){
-        printf("Off the screen");
+    if (ball.getPosition().y < 1){
         direction.y = -direction.y;
+        ball.setPosition(ball.getPosition().x, 1); // Adjust position to be inside screen bounds
+    }
+    else if (ball.getPosition().y > 580){
+        direction.y = -direction.y;
+        ball.setPosition(ball.getPosition().x, 580); // Adjust position to be inside screen bounds
     }
 
+    //calculate the next position of the ball, deltaTime for making it framerate independent
     sf::Vector2f nextPosition = ball.getPosition() + (speed * direction * deltaTime);
 
+    //set the current position to the calculated next position if the ball is inside the screen
     if (nextPosition.x > 0 && nextPosition.x < 1200 && nextPosition.y > 0 && nextPosition.y < 600){
         ball.setPosition(nextPosition);
     }
 
+    //if the ball is offscreen, reverse its x direction (so it flies towards the player who scored)
+    //and reset the paddles and ball to their initial positions
     if (nextPosition.x < 5 || nextPosition.x > 1195) {
+        if (nextPosition.x < 5)
+            (*score1)++;
+        else
+            (*score2)++;
+        std::cout << *score1 << *score2;
         direction.x = - direction.x;
         direction.y = 0;
         ball.setPosition(580,290);
+        paddle1.setPosition(0, 225);
+        paddle2.setPosition(1180, 225);
     }
 
     return direction;
@@ -73,24 +99,27 @@ sf::Vector2f moveBall(sf::RectangleShape& ball, float deltaTime, sf::Vector2f di
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(1200, 600), "Pong");
+    int scorePaddle1 = 0, scorePaddle2 = 0;
+
+    sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "Pong");
 
     //Left paddle
-    sf::RectangleShape paddle1(sf::Vector2f(20, 150));
-    paddle1.setFillColor(sf::Color::White);
+    sf::RectangleShape paddle1(sf::Vector2f(PADDLE_WIDTH, PADDLE_HEIGHT));
     paddle1.setPosition(0, 225);
 
     //Right paddle
-    sf::RectangleShape paddle2(sf::Vector2f(20, 150));
-    paddle2.setFillColor(sf::Color::White);
+    sf::RectangleShape paddle2(sf::Vector2f(PADDLE_WIDTH, PADDLE_HEIGHT));
     paddle2.setPosition(1180, 225);
 
     //Ball(?)
-    sf::RectangleShape ball(sf::Vector2f(20,20));
-    ball.setFillColor(sf::Color::White);
+    sf::RectangleShape ball(sf::Vector2f(BALL_SIDE, BALL_SIDE));
     ball.setPosition(590, 290);
 
-    //column of squares
+    //Score text
+    sf::Font font;
+    if (!font.loadFromFile("C:\\Users\\devan\\Downloads\\VT323\\pixelfont.ttf")) {
+        return EXIT_FAILURE;
+    }
     
     sf::Clock clock;
     sf::Vector2f direction = {-1.0f, 0.0f}; 
@@ -108,13 +137,31 @@ int main()
         float deltaTime = clock.restart().asSeconds();
         movePaddle(paddle1, paddle2, deltaTime);
 
-        direction = moveBall(ball, deltaTime, direction, paddle1, paddle2);
+        direction = moveBall(ball, deltaTime, direction, paddle1, paddle2, &scorePaddle1, &scorePaddle2);
+        
+        std::string scoreText1 = std::to_string(scorePaddle1);
+        std::string scoreText2 = std::to_string(scorePaddle2);
 
+        sf::Text Score1(scoreText1, font, 100);
+        Score1.setFillColor(sf::Color::White);
+        Score1.setPosition(500, 30);
+
+        sf::Text Score2(scoreText2, font, 100);
+        Score2.setFillColor(sf::Color::White);
+        Score2.setPosition(650,30);
 
         window.clear();
         window.draw(paddle1);
         window.draw(paddle2);
         window.draw(ball);
+        window.draw(Score1);
+        window.draw(Score2);
+        //column of squares
+        for (int i = 0; i < 19; i++){
+            sf::RectangleShape square(sf::Vector2f(BALL_SIDE,BALL_SIDE));
+            square.setPosition(SCREEN_WIDTH/2 - 10, BALL_SIDE + BALL_SIDE * 2*i);
+            window.draw(square);
+        }
         window.display();
     }
 
