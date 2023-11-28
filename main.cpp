@@ -1,10 +1,10 @@
 #include <SFML/Graphics.hpp>
 #include <cstdlib>
-#include <iostream>
+#include <algorithm>
 #include "global.hpp"
 
 void movePaddle(sf::RectangleShape& paddle1, sf::RectangleShape& paddle2, float deltaTime){
-    const float paddleSpeed = 400.0f;
+    const float paddleSpeed = 450.0f;
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)){
         float nextPosition = paddle1.getPosition().y;
@@ -35,12 +35,7 @@ void movePaddle(sf::RectangleShape& paddle1, sf::RectangleShape& paddle2, float 
 
 //totally made my code more readable by making this one function separate
 bool isCollision(sf::RectangleShape& ball, sf::RectangleShape& paddle) {
-    sf::FloatRect ballBox = ball.getGlobalBounds();
-    sf::FloatRect paddleBox = paddle.getGlobalBounds();
-    if (ballBox.intersects(paddleBox)){
-        return true;
-    }
-    return false;
+    return ball.getGlobalBounds().intersects(paddle.getGlobalBounds());
 }
 
 sf::Vector2f moveBall(sf::RectangleShape& ball, float deltaTime, sf::Vector2f direction, 
@@ -86,16 +81,34 @@ sf::Vector2f moveBall(sf::RectangleShape& ball, float deltaTime, sf::Vector2f di
             (*score1)++;
         else
             (*score2)++;
-        std::cout << *score1 << *score2;
         direction.x = - direction.x;
         direction.y = 0;
         ball.setPosition(580,290);
-        paddle1.setPosition(0, 225);
-        paddle2.setPosition(1180, 225);
     }
 
     return direction;
 }
+
+void computerPlayer(sf::RectangleShape& ball, sf::RectangleShape& paddle1, float deltaTime){
+    float paddle_speed = 450.0f;
+
+    //predict the ball's position and adjust the paddle's position accordingly
+    float targetY = ball.getPosition().y;
+
+    //if ball is in the opponent half of the screen, add/subtract from targetY accordingly 
+    if (ball.getPosition().x > SCREEN_WIDTH / 2) {
+        targetY += (ball.getPosition().y > paddle1.getPosition().y) ? paddle_speed * deltaTime : -paddle_speed * deltaTime;
+    }
+
+    targetY = std::max(0.0f, std::min(450.0f, targetY));
+
+    float currentY = paddle1.getPosition().y;
+    float direction = (targetY > currentY) ? 1.0f : -1.0f;
+    float nextPosition = currentY + direction * paddle_speed * deltaTime;
+
+    paddle1.setPosition(0, nextPosition);
+}
+
 
 int main()
 {
@@ -136,6 +149,7 @@ int main()
 
         float deltaTime = clock.restart().asSeconds();
         movePaddle(paddle1, paddle2, deltaTime);
+        computerPlayer(ball, paddle1, deltaTime);
 
         direction = moveBall(ball, deltaTime, direction, paddle1, paddle2, &scorePaddle1, &scorePaddle2);
         
