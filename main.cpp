@@ -6,26 +6,26 @@
 void movePaddle(sf::RectangleShape& paddle1, sf::RectangleShape& paddle2, float deltaTime){
     const float paddleSpeed = 450.0f;
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)){
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
         float nextPosition = paddle1.getPosition().y;
         nextPosition -= paddleSpeed * deltaTime;
         if (nextPosition > 0)
             paddle1.setPosition(0, nextPosition);
     }
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)){
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
         float nextPosition = paddle1.getPosition().y;
         nextPosition += paddleSpeed * deltaTime;
         if (nextPosition < 450)
             paddle1.setPosition(0, nextPosition);
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)){
         float nextPosition = paddle2.getPosition().y;
         nextPosition -= paddleSpeed * deltaTime;
         if (nextPosition > 0)
             paddle2.setPosition(1180, nextPosition);
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)){
         float nextPosition = paddle2.getPosition().y;
         nextPosition += paddleSpeed * deltaTime;
         if (nextPosition < 450)
@@ -109,10 +109,21 @@ void computerPlayer(sf::RectangleShape& ball, sf::RectangleShape& paddle1, float
     paddle1.setPosition(0, nextPosition);
 }
 
+void handleStartInput(bool* computer, bool* startUpChoice){
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)){
+        *startUpChoice = 1;
+        *computer = 1;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)){
+        *startUpChoice = 1;
+    }
+}
+
 
 int main()
 {
     int scorePaddle1 = 0, scorePaddle2 = 0;
+    bool computer = 0, gameOver = 0, startUpChoice = 0; 
 
     sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "Pong");
 
@@ -128,18 +139,23 @@ int main()
     sf::RectangleShape ball(sf::Vector2f(BALL_SIDE, BALL_SIDE));
     ball.setPosition(590, 290);
 
-    //Score text
+    //Load font
     sf::Font font;
     if (!font.loadFromFile("C:\\Users\\devan\\Downloads\\VT323\\pixelfont.ttf")) {
         return EXIT_FAILURE;
     }
     
+    //used to calculate the time between frames
     sf::Clock clock;
-    sf::Vector2f direction = {-1.0f, 0.0f}; 
+
+    //intializes the direction vector, ball travels to the right when the game starts
+    sf::Vector2f direction = {1.0f, 0.0f}; 
 
     while (window.isOpen())
     {
         sf::Event event;
+
+        //check if window closed
         while (window.pollEvent(event))
         {
             if (event.type == sf::Event::Closed)
@@ -147,34 +163,53 @@ int main()
             
         }
 
-        float deltaTime = clock.restart().asSeconds();
-        movePaddle(paddle1, paddle2, deltaTime);
-        computerPlayer(ball, paddle1, deltaTime);
+        //game not started yet
+        if (startUpChoice == 0){
+            sf::Text startText("Choose Game Mode: \n Single Player (Press Up Arrow) \n Two Player (Press Down arrow)", font, 70);
+            startText.setFillColor(sf::Color::White);
+            startText.setPosition(100,100);
+            window.draw(startText);
 
-        direction = moveBall(ball, deltaTime, direction, paddle1, paddle2, &scorePaddle1, &scorePaddle2);
-        
-        std::string scoreText1 = std::to_string(scorePaddle1);
-        std::string scoreText2 = std::to_string(scorePaddle2);
+            //will flip startUpChoice to 1 and also provide input on if the user wants game to be single player or two player
+            handleStartInput(&computer, &startUpChoice);
+        }
 
-        sf::Text Score1(scoreText1, font, 100);
-        Score1.setFillColor(sf::Color::White);
-        Score1.setPosition(500, 30);
+        if (startUpChoice == 1){
+            float deltaTime = clock.restart().asSeconds();
 
-        sf::Text Score2(scoreText2, font, 100);
-        Score2.setFillColor(sf::Color::White);
-        Score2.setPosition(650,30);
+            //didnt want to define an overload so you can still move paddle1 when computerplayer is on (wont really work)
+            movePaddle(paddle1, paddle2, deltaTime);
 
-        window.clear();
-        window.draw(paddle1);
-        window.draw(paddle2);
-        window.draw(ball);
-        window.draw(Score1);
-        window.draw(Score2);
-        //column of squares
-        for (int i = 0; i < 19; i++){
-            sf::RectangleShape square(sf::Vector2f(BALL_SIDE,BALL_SIDE));
-            square.setPosition(SCREEN_WIDTH/2 - 10, BALL_SIDE + BALL_SIDE * 2*i);
-            window.draw(square);
+            if (computer == 1){
+                computerPlayer(ball, paddle1, deltaTime);
+            }
+                        
+            std::string scoreText1 = std::to_string(scorePaddle1);
+            std::string scoreText2 = std::to_string(scorePaddle2);
+
+            direction = moveBall(ball, deltaTime, direction, paddle1, paddle2, &scorePaddle1, &scorePaddle2);
+
+
+            sf::Text Score1(scoreText1, font, 100);
+            Score1.setFillColor(sf::Color::White);
+            Score1.setPosition(500, 30);
+
+            sf::Text Score2(scoreText2, font, 100);
+            Score2.setFillColor(sf::Color::White);
+            Score2.setPosition(650,30);
+
+            window.clear();
+            window.draw(paddle1);
+            window.draw(paddle2);
+            window.draw(ball);
+            window.draw(Score1);
+            window.draw(Score2);
+            //column of squares
+            for (int i = 0; i < 19; i++){
+                sf::RectangleShape square(sf::Vector2f(BALL_SIDE,BALL_SIDE));
+                square.setPosition(SCREEN_WIDTH/2 - 10, BALL_SIDE + BALL_SIDE * 2*i);
+                window.draw(square);
+            }
         }
         window.display();
     }
