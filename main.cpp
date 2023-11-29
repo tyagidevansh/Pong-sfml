@@ -78,9 +78,9 @@ sf::Vector2f moveBall(sf::RectangleShape& ball, float deltaTime, sf::Vector2f di
     //and reset the paddles and ball to their initial positions
     if (nextPosition.x < 5 || nextPosition.x > 1195) {
         if (nextPosition.x < 5)
-            (*score1)++;
-        else
             (*score2)++;
+        else
+            (*score1)++;
         direction.x = - direction.x;
         direction.y = 0;
         ball.setPosition(580,290);
@@ -109,7 +109,12 @@ void computerPlayer(sf::RectangleShape& ball, sf::RectangleShape& paddle1, float
     paddle1.setPosition(0, nextPosition);
 }
 
-void handleStartInput(bool* computer, bool* startUpChoice){
+void handleStartInput(bool* computer, bool* startUpChoice, sf::RenderWindow& window, sf::Font& font){
+    sf::Text startText("Choose Game Mode: \n Single Player (Press Up Arrow) \n Two Player (Press Down arrow)", font, 70);
+    startText.setFillColor(sf::Color::White);
+    startText.setPosition(100,100);
+    window.draw(startText);
+
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)){
         *startUpChoice = 1;
         *computer = 1;
@@ -119,6 +124,56 @@ void handleStartInput(bool* computer, bool* startUpChoice){
     }
 }
 
+void handleGameOver(bool& gameOver, sf::RenderWindow& window, sf::Font& font, int& score1, int& score2, bool computer) {
+    sf::Text endText("Game Over!", font, 100);
+    endText.setFillColor(sf::Color::White);
+    endText.setPosition(400, 100);
+
+    sf::Text scoreText("", font, 70);
+    scoreText.setFillColor(sf::Color::White);
+    scoreText.setPosition(410, 200);
+
+    if (score1 >= 10) {
+        if (computer) {
+            scoreText.setString("Computer wins");
+        } else {
+            scoreText.setString(" Player1 wins");
+        }
+        
+    }
+    if (score2 >= 10) {
+        scoreText.setString(" Player2 wins");
+    }
+
+    sf::Text replayText("Press R to Play Again \n  Press esc to Quit", font, 50);
+    replayText.setFillColor(sf::Color::White);
+    replayText.setPosition(410,400);
+
+    while (window.isOpen() && gameOver) {
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                window.close();
+                gameOver = false; 
+            }
+        }
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::R)){
+            gameOver = 0;
+            score1 = 0;
+            score2 = 0;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)){
+            window.close();
+        }
+
+        window.clear();
+        window.draw(endText);
+        window.draw(scoreText);
+        window.draw(replayText);
+        window.display();
+    }
+}
 
 int main()
 {
@@ -165,16 +220,11 @@ int main()
 
         //game not started yet
         if (startUpChoice == 0){
-            sf::Text startText("Choose Game Mode: \n Single Player (Press Up Arrow) \n Two Player (Press Down arrow)", font, 70);
-            startText.setFillColor(sf::Color::White);
-            startText.setPosition(100,100);
-            window.draw(startText);
-
             //will flip startUpChoice to 1 and also provide input on if the user wants game to be single player or two player
-            handleStartInput(&computer, &startUpChoice);
+            handleStartInput(&computer, &startUpChoice, window, font);
         }
 
-        if (startUpChoice == 1){
+        if (startUpChoice == 1 && gameOver == 0){
             float deltaTime = clock.restart().asSeconds();
 
             //didnt want to define an overload so you can still move paddle1 when computerplayer is on (wont really work)
@@ -189,6 +239,10 @@ int main()
 
             direction = moveBall(ball, deltaTime, direction, paddle1, paddle2, &scorePaddle1, &scorePaddle2);
 
+            if (scorePaddle1 >= 10 || scorePaddle2 >= 10){
+                gameOver = 1;
+                handleGameOver(gameOver, window, font, scorePaddle1, scorePaddle2, computer);
+            }
 
             sf::Text Score1(scoreText1, font, 100);
             Score1.setFillColor(sf::Color::White);
@@ -204,6 +258,7 @@ int main()
             window.draw(ball);
             window.draw(Score1);
             window.draw(Score2);
+
             //column of squares
             for (int i = 0; i < 19; i++){
                 sf::RectangleShape square(sf::Vector2f(BALL_SIDE,BALL_SIDE));
