@@ -1,7 +1,0 @@
-#pragma once
-
-int SCREEN_WIDTH = 1200;
-int SCREEN_HEIGHT = 600;
-int PADDLE_WIDTH = 20;
-int PADDLE_HEIGHT = 150;
-int BALL_SIDE = 20;
